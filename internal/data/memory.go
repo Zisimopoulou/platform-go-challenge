@@ -3,6 +3,7 @@ package data
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -44,18 +45,37 @@ func (s *InMemoryStore) Add(userID string, asset models.RawAsset) (string, error
 	return favID, nil
 }
 
-func (s *InMemoryStore) List(userID string) ([]models.Favorite, error) {
+func (s *InMemoryStore) List(userID string, limit, offset int) ([]models.Favorite, int, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+
 	m, ok := s.data[userID]
 	if !ok {
-		return []models.Favorite{}, nil
+		return []models.Favorite{}, 0, nil
 	}
-	out := make([]models.Favorite, 0, len(m))
-	for k, v := range m {
-		out = append(out, models.Favorite{FavoriteID: k, Asset: v})
+
+	totalCount := len(m)
+
+ 	favorites := make([]models.Favorite, 0, totalCount)
+	for id, asset := range m {
+		favorites = append(favorites, models.Favorite{FavoriteID: id, Asset: asset})
 	}
-	return out, nil
+
+ 	sort.Slice(favorites, func(i, j int) bool {
+		return favorites[i].Asset.CreatedAt.After(favorites[j].Asset.CreatedAt)
+	})
+
+ 	if offset >= totalCount {
+		return []models.Favorite{}, totalCount, nil
+	}
+
+	end := offset + limit
+	if end > totalCount {
+		end = totalCount
+	}
+
+	paginatedFavorites := favorites[offset:end]
+	return paginatedFavorites, totalCount, nil
 }
 
 func (s *InMemoryStore) Delete(userID, favID string) error {

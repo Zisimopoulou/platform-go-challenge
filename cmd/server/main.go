@@ -14,19 +14,19 @@ import (
 )
 
 func main() {
- 	if os.Getenv("JWT_SECRET") == "" {
-		log.Println("JWT_SECRET not set, using default 'dev-secret' (not safe for production)")
-		os.Setenv("JWT_SECRET", "dev-secret")
+	if os.Getenv("JWT_SECRET") == "" && os.Getenv("APP_JWT_SECRET") == "" {
+		log.Fatal("JWT_SECRET or APP_JWT_SECRET environment variable must be set")
 	}
 
- 	store := data.NewInMemoryStore()
+	store := data.NewInMemoryStore()
 	svc := core.NewService(store)
 	h := api.NewHandler(svc)
 
 	mux := http.NewServeMux()
 	mux.Handle("/users/", http.StripPrefix("/users", h))
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK); w.Write([]byte("ok")) })
-	mux.HandleFunc("/auth/login", api.LoginHandler)  
+	mux.HandleFunc("/auth/login", api.LoginHandler)
+	mux.HandleFunc("/auth/refresh", api.RefreshHandler)
 
 	addr := ":8080"
 	srv := &http.Server{
@@ -34,7 +34,7 @@ func main() {
 		Handler: api.WithMiddleware(mux),
 	}
 
- 	go func() {
+	go func() {
 		log.Printf("server listening on %s", addr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("listen: %s\n", err)

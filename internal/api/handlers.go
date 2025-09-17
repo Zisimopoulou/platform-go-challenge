@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"strconv"
 
 	"github.com/Zisimopoulou/platform-go-challenge/internal/core"
 	"github.com/Zisimopoulou/platform-go-challenge/internal/models"
@@ -65,15 +66,6 @@ func (h *Handler) handle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Handler) handleListFavorites(w http.ResponseWriter, r *http.Request, userID string) {
-	favs, err := h.svc.ListFavorites(userID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-	writeJSON(w, http.StatusOK, favs)
-}
-
  func (h *Handler) handleAddFavorite(w http.ResponseWriter, r *http.Request, userID string) {
 	var asset models.RawAsset
 	if err := json.NewDecoder(r.Body).Decode(&asset); err != nil {
@@ -133,4 +125,40 @@ func writeJSON(w http.ResponseWriter, code int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+func (h *Handler) handleListFavorites(w http.ResponseWriter, r *http.Request, userID string) {
+	limit, offset := getPaginationParams(r)
+	
+	favs, err := h.svc.ListFavorites(userID, limit, offset)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, favs)
+}
+
+func getPaginationParams(r *http.Request) (int, int) {
+	limitStr := r.URL.Query().Get("limit")
+	offsetStr := r.URL.Query().Get("offset")
+	
+	limit := 50
+	offset := 0
+	
+	if limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+			limit = l
+			if limit > 100 {
+				limit = 100
+			}
+		}
+	}
+	
+	if offsetStr != "" {
+		if o, err := strconv.Atoi(offsetStr); err == nil && o >= 0 {
+			offset = o
+		}
+	}
+	
+	return limit, offset
 }

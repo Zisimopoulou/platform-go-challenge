@@ -7,20 +7,55 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
 type ctxKeyUserID struct{}
 
-func GenerateToken(userID string) (string, error) {
-	secret := []byte(os.Getenv("JWT_SECRET"))
-	if len(secret) == 0 {
-		return "", errors.New("JWT_SECRET not set")
+type TokenResponse struct {
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+	ExpiresIn    int64  `json:"expiresIn"`
+}
+
+type RefreshRequest struct {
+	RefreshToken string `json:"refreshToken"`
+}
+
+func GenerateTokens(userID string) (string, string, int64, error) {
+	secret := getJWTSecret()
+	expiresAt := time.Now().Add(time.Hour * 1).Unix()
+	accessClaims := jwt.MapClaims{"sub": userID, "exp": expiresAt, "type": "access"}
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
+	accessString, err := accessToken.SignedString(secret)
+
+	if err != nil {
+		return "", "", 0, err
 	}
-	claims := jwt.MapClaims{"sub": userID}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(secret)
+
+	refreshExpiresAt := time.Now().Add(time.Hour * 24 * 7).Unix()
+	refreshClaims := jwt.MapClaims{"sub": userID, "exp": refreshExpiresAt, "type": "refresh"}
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
+	refreshString, err := refreshToken.SignedString(secret)
+
+	if err != nil {
+		return "", "", 0, err
+	}
+
+	return accessString, refreshString, expiresAt, nil
+}
+
+func getJWTSecret() []byte {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		secret = os.Getenv("APP_JWT_SECRET")
+	}
+	if secret == "" {
+		panic("JWT_SECRET or APP_JWT_SECRET environment variable not set")
+	}
+	return []byte(secret)
 }
 
 func FromContextUserID(ctx context.Context) (string, bool) {
@@ -45,7 +80,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		tokenStr := parts[1]
-		secret := []byte(os.Getenv("JWT_SECRET"))
+		secret := getJWTSecret()
 		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, errors.New("unexpected signing method")
@@ -59,6 +94,10 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
 			writeError(w, http.StatusUnauthorized, "invalid token claims")
+			return
+		}
+		if claims["type"] != "access" {
+			writeError(w, http.StatusUnauthorized, "invalid token type")
 			return
 		}
 		sub, ok := claims["sub"].(string)
@@ -83,10 +122,57 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
-	token, err := GenerateToken(body.UserID)
+	accessToken, refreshToken, expiresAt, err := GenerateTokens(body.UserID)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"token": token})
+	writeJSON(w, http.StatusOK, TokenResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresIn:    expiresAt,
+	})
+}
+
+func RefreshHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	var body RefreshRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.RefreshToken == "" {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	secret := getJWTSecret()
+	token, err := jwt.Parse(body.RefreshToken, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
+		return secret, nil
+	})
+	if err != nil || !token.Valid {
+		writeError(w, http.StatusUnauthorized, "invalid refresh token")
+		return
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || claims["type"] != "refresh" {
+		writeError(w, http.StatusUnauthorized, "invalid refresh token")
+		return
+	}
+	userID, ok := claims["sub"].(string)
+	if !ok || userID == "" {
+		writeError(w, http.StatusUnauthorized, "invalid token subject")
+		return
+	}
+	accessToken, refreshToken, expiresAt, err := GenerateTokens(userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, TokenResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresIn:    expiresAt,
+	})
 }

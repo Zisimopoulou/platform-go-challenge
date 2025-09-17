@@ -10,46 +10,52 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/Zisimopoulou/platform-go-challenge/internal/api"
 	"github.com/Zisimopoulou/platform-go-challenge/internal/core"
+	"github.com/Zisimopoulou/platform-go-challenge/internal/api"
 	"github.com/Zisimopoulou/platform-go-challenge/internal/data"
 )
 
 func TestConcurrentAccess(t *testing.T) {
-	// Provide default JWT secret for testing
 	if os.Getenv("JWT_SECRET") == "" {
 		log.Println("JWT_SECRET not set, using default 'dev-secret' (not safe for production)")
 		os.Setenv("JWT_SECRET", "dev-secret")
 	}
 
-	// Initialize in-memory store and service
 	store := data.NewInMemoryStore()
 	svc := core.NewService(store)
-	h := api.NewHandler(svc)
-
-	// Wrap handler with AuthMiddleware
+	
 	mux := http.NewServeMux()
-	mux.Handle("/", api.AuthMiddleware(h))
-	srv := httptest.NewServer(mux)
+	mux.Handle("/users/", http.StripPrefix("/users", api.NewHandler(svc)))
+	mux.HandleFunc("/auth/login", api.LoginHandler)
+	
+	handler := api.WithMiddleware(mux)
+	srv := httptest.NewServer(handler)
 	defer srv.Close()
 
-	// Test user and JWT
 	user := "concurrentuser"
-	token, err := api.GenerateToken(user)
+	
+	loginReq := map[string]string{"userId": user}
+	loginBody, _ := json.Marshal(loginReq)
+	loginResp, err := http.Post(srv.URL+"/auth/login", "application/json", bytes.NewReader(loginBody))
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer loginResp.Body.Close()
+
+	var tokenResp api.TokenResponse
+	json.NewDecoder(loginResp.Body).Decode(&tokenResp)
+	accessToken := tokenResp.AccessToken
+
 	client := &http.Client{}
 
-	// Add initial favorite
 	addReq := map[string]interface{}{
 		"type":        "insight",
 		"description": "initial",
 		"payload":     map[string]string{"text": "test"},
 	}
 	b, _ := json.Marshal(addReq)
-	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/"+user+"/favorites", bytes.NewReader(b))
-	req.Header.Set("Authorization", "Bearer "+token)
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/users/"+user+"/favorites", bytes.NewReader(b))
+	req.Header.Set("Authorization", "Bearer "+accessToken)
 	req.Header.Set("Content-Type", "application/json")
 	res, err := client.Do(req)
 	if err != nil {
@@ -57,7 +63,6 @@ func TestConcurrentAccess(t *testing.T) {
 	}
 	res.Body.Close()
 
-	// Concurrent reads
 	var wg sync.WaitGroup
 	numRequests := 20
 
@@ -65,8 +70,8 @@ func TestConcurrentAccess(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			req, _ := http.NewRequest(http.MethodGet, srv.URL+"/"+user+"/favorites", nil)
-			req.Header.Set("Authorization", "Bearer "+token)
+			req, _ := http.NewRequest(http.MethodGet, srv.URL+"/users/"+user+"/favorites", nil)
+			req.Header.Set("Authorization", "Bearer "+accessToken)
 			res, err := client.Do(req)
 			if err != nil {
 				t.Error("Concurrent request failed:", err)
