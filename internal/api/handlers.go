@@ -74,12 +74,18 @@ func (h *Handler) handleListFavorites(w http.ResponseWriter, r *http.Request, us
 	writeJSON(w, http.StatusOK, favs)
 }
 
-func (h *Handler) handleAddFavorite(w http.ResponseWriter, r *http.Request, userID string) {
+ func (h *Handler) handleAddFavorite(w http.ResponseWriter, r *http.Request, userID string) {
 	var asset models.RawAsset
 	if err := json.NewDecoder(r.Body).Decode(&asset); err != nil {
-		writeError(w, http.StatusBadRequest, "invalid body")
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
+
+ 	if err := validateAsset(&asset); err != nil {
+		validationErrorResponse(w, err)
+		return
+	}
+
 	id, err := h.svc.AddFavorite(userID, asset)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
@@ -88,23 +94,30 @@ func (h *Handler) handleAddFavorite(w http.ResponseWriter, r *http.Request, user
 	writeJSON(w, http.StatusCreated, map[string]string{"favoriteId": id})
 }
 
-func (h *Handler) handleDeleteFavorite(w http.ResponseWriter, r *http.Request, userID, favID string) {
-	if err := h.svc.DeleteFavorite(userID, favID); err != nil {
+ func (h *Handler) handleUpdateFavorite(w http.ResponseWriter, r *http.Request, userID, favID string) {
+	var body struct {
+		Description string `json:"description" validate:"required,max=500"`
+	}
+	
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+
+ 	if err := validateStruct(body); err != nil {
+		validationErrorResponse(w, err)
+		return
+	}
+
+	if err := h.svc.UpdateDescription(userID, favID, body.Description); err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) handleUpdateFavorite(w http.ResponseWriter, r *http.Request, userID, favID string) {
-	var body struct {
-		Description string `json:"description"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Description == "" {
-		writeError(w, http.StatusBadRequest, "invalid body")
-		return
-	}
-	if err := h.svc.UpdateDescription(userID, favID, body.Description); err != nil {
+func (h *Handler) handleDeleteFavorite(w http.ResponseWriter, r *http.Request, userID, favID string) {
+	if err := h.svc.DeleteFavorite(userID, favID); err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
 	}

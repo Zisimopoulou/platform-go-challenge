@@ -1,6 +1,8 @@
-package models
+ package models
 
-import "time"
+import (
+	"time"
+)
 
 type AssetType string
 
@@ -10,34 +12,34 @@ const (
 	TypeAudience AssetType = "audience"
 )
 
-type Chart struct {
-	Title string `json:"title"`
-	XAxis string `json:"xAxis"`
-	YAxis string `json:"yAxis"`
-	Data  []int  `json:"data"`
+ type Chart struct {
+	Title string `json:"title" validate:"required"`
+	XAxis string `json:"xAxis" validate:"required"`
+	YAxis string `json:"yAxis" validate:"required"`
+	Data  []int  `json:"data" validate:"required,min=1"`
 }
 
-type Insight struct {
-	Text string `json:"text"`
+ type Insight struct {
+	Text string `json:"text" validate:"required,min=1,max=500"`
 }
 
-type Audience struct {
-	Gender         string `json:"gender"`
-	BirthCountry   string `json:"birthCountry"`
-	AgeGroup       string `json:"ageGroup"`
-	HoursDaily     string `json:"hoursDaily"`
-	PurchasesLastM string `json:"purchasesLastMonth"`
+ type Audience struct {
+	Gender         string `json:"gender" validate:"required,oneof=Male Female Other"`
+	BirthCountry   string `json:"birthCountry" validate:"required,min=2,max=100"`
+	AgeGroup       string `json:"ageGroup" validate:"required,min=1,max=50"`
+	HoursDaily     string `json:"hoursDaily" validate:"required,min=1,max=50"`
+	PurchasesLastM string `json:"purchasesLastMonth" validate:"required,min=1,max=50"`
 }
 
-type RawAsset struct {
+ type RawAsset struct {
 	ID          string      `json:"id"`
-	Type        AssetType   `json:"type"`
-	Description string      `json:"description,omitempty"`
+	Type        AssetType   `json:"type" validate:"required,oneof=chart insight audience"`
+	Description string      `json:"description,omitempty" validate:"max=500"`
 	CreatedAt   time.Time   `json:"createdAt"`
-	Payload     interface{} `json:"payload"`
+	Payload     interface{} `json:"payload" validate:"required"`
 }
 
-type Favorite struct {
+ type Favorite struct {
 	FavoriteID string   `json:"favoriteId"`
 	Asset      RawAsset `json:"asset"`
 }
