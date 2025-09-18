@@ -17,6 +17,7 @@ Favorites management using bearer token for authentication
 ## Asset Types
 
 * Chart
+  
 {
   "type": "chart",
   "description": "Monthly revenue growth",
@@ -29,6 +30,7 @@ Favorites management using bearer token for authentication
 }
 
 * Insight
+  
 {
   "type": "insight",
   "description": "Key market insight",
@@ -38,6 +40,7 @@ Favorites management using bearer token for authentication
 }
 
 * Audience
+  
 {
   "type": "audience",
   "description": "Target demographic",
@@ -60,9 +63,13 @@ go get github.com/go-playground/validator/v10
 go get github.com/golang-jwt/jwt/v5
 
 go get github.com/davecgh/go-spew/spew@latest
+
 go get github.com/go-chi/chi/v5
+
 go get github.com/go-chi/cors
+
 go mod tidy
 
 * Set up environment variables
+  
 $env:JWT_SECRET="dev-super-secure-random-secret-32-chars-long!"
