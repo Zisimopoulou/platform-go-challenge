@@ -12,7 +12,9 @@ Favorites management using bearer token for authentication
 * POST	/users/{user}/favorites Create a new favorite	
 * GET	/users/{user}/favorites	List all favorites	 
 * PUT	/users/{user}/favorites/{id}	Update a favorite 
-* DELETE	/users/{user}/favorites/{id}	Delete a favorite 
+* DELETE	/users/{user}/favorites/{id}	Delete a favorite
+
+* Login /auth/login
 
 ## Asset Types
 
