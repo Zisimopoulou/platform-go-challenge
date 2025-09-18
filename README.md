@@ -9,10 +9,10 @@ A RESTful API for managing user favorites including charts, insights, and audien
 
 ## API Endpoints
 Favorites management using bearer token for authentication
-* POST	/{user}/favorites Create a new favorite	
-* GET	/{user}/favorites	List all favorites	 
-* PUT	/{user}/favorites/{id}	Update a favorite 
-* DELETE	/{user}/favorites/{id}	Delete a favorite 
+* POST	/users/{user}/favorites Create a new favorite	
+* GET	/users/{user}/favorites	List all favorites	 
+* PUT	/users/{user}/favorites/{id}	Update a favorite 
+* DELETE	/users/{user}/favorites/{id}	Delete a favorite 
 
 ## Asset Types
 
