@@ -1,31 +1,77 @@
-# GlobalWebIndex Engineering Challenge
+A RESTful API for managing user favorites including charts, insights, and audience segments.
 
-## Introduction
+## Features
+* User Authentication: JWT-based authentication
+* CRUD Operations: Create, read, update, and delete favorites
+* Support for charts, insights and audiences
+* Input validation
+* In-Memory Storage
 
-This challenge is designed to give you the opportunity to demonstrate your abilities as a software engineer and specifically your knowledge of the Go language.
+## API Endpoints
+Favorites management using bearer token for authentication
+* POST	/users/{user}/favorites Create a new favorite	
+* GET	/users/{user}/favorites	List all favorites	 
+* PUT	/users/{user}/favorites/{id}	Update a favorite 
+* DELETE	/users/{user}/favorites/{id}	Delete a favorite
 
-On the surface the challenge is trivial to solve, however you should choose to add features or capabilities which you feel demonstrate your skills and knowledge the best. For example, you could choose to optimise for performance and concurrency, you could choose to add a robust security layer or ensure your application is highly available. Or all of these.
+* Login /auth/login
 
-Of course, usually we would choose to solve any given requirement with the simplest possible solution, however that is not the spirit of this challenge.
+## Asset Types
 
-## Challenge
+* Chart
+  
+{
+  "type": "chart",
+  "description": "Monthly revenue growth",
+  "payload": {
+    "title": "Revenue Chart",
+    "xAxis": "Months",
+    "yAxis": "Revenue ($)",
+    "data": [1000, 1500, 2000, 2500]
+  }
+}
 
-Let's say that in GWI platform all of our users have access to a huge list of assets. We want our users to have a peronal list of favourites, meaning assets that favourite or “star” so that they have them in their frontpage dashboard for quick access. An asset can be one the following
-* Chart (that has a small title, axes titles and data)
-* Insight (a small piece of text that provides some insight into a topic, e.g. "40% of millenials spend more than 3hours on social media daily")
-* Audience (which is a series of characteristics, for that exercise lets focus on gender (Male, Female), birth country, age groups, hours spent daily on social media, number of purchases last month)
-e.g. Males from 24-35 that spent more than 3 hours on social media daily.
+* Insight
+  
+{
+  "type": "insight",
+  "description": "Key market insight",
+  "payload": {
+    "text": "40% of millennials prefer mobile shopping"
+  }
+}
 
-Build a web server which has some endpoint to receive a user id and return a list of all the user’s favourites. Also we want endpoints that would add an asset to favourites, remove it, or edit its description. Assets obviously can share some common attributes (like their description) but they also have completely different structure and data. It’s up to you to decide the structure and we are not looking for something overly complex here (especially for the cases of audiences). There is no need to have/deploy/create an actual database although we would like to discuss about storage options and data representations.
+* Audience
+  
+{
+  "type": "audience",
+  "description": "Target demographic",
+  "payload": {
+    "gender": "Male",
+    "birthCountry": "Greece",
+    "ageGroup": "24-35",
+    "hoursDaily": "3+",
+    "purchasesLastMonth": "2"
+  }
+}
 
-Note that users have no limit on how many assets they want on their favourites so your service will need to provide a reasonable response time.
 
-A working server application with functional API is required, along with a clear readme.md. Useful and passing tests would be also be viewed favourably
+## Instructions
 
-It is appreciated, though not required, if a Dockerfile is included.
+* Add dependencies
+  
+go get github.com/go-playground/validator/v10
 
-## Submission
+go get github.com/golang-jwt/jwt/v5
 
-Just create a fork from the current repo and send it to us!
+go get github.com/davecgh/go-spew/spew@latest
 
-Good luck, potential colleague!
+go get github.com/go-chi/chi/v5
+
+go get github.com/go-chi/cors
+
+go mod tidy
+
+* Set up environment variables
+  
+$env:JWT_SECRET="dev-super-secure-random-secret-32-chars-long!"
