@@ -54,8 +54,11 @@ Favorites management using bearer token for authentication
 ## Instructions
 
 * Add dependencies
+  
 go get github.com/go-playground/validator/v10
+
 go get github.com/golang-jwt/jwt/v5
+
 go get github.com/davecgh/go-spew/spew@latest
 go get github.com/go-chi/chi/v5
 go get github.com/go-chi/cors
