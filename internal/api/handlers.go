@@ -3,8 +3,8 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 	"strconv"
+	"strings"
 
 	"github.com/Zisimopoulou/platform-go-challenge/internal/core"
 	"github.com/Zisimopoulou/platform-go-challenge/internal/models"
@@ -66,14 +66,14 @@ func (h *Handler) handle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
- func (h *Handler) handleAddFavorite(w http.ResponseWriter, r *http.Request, userID string) {
+func (h *Handler) handleAddFavorite(w http.ResponseWriter, r *http.Request, userID string) {
 	var asset models.RawAsset
 	if err := json.NewDecoder(r.Body).Decode(&asset); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
 
- 	if err := validateAsset(&asset); err != nil {
+	if err := validateAsset(&asset); err != nil {
 		validationErrorResponse(w, err)
 		return
 	}
@@ -86,17 +86,17 @@ func (h *Handler) handle(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, map[string]string{"favoriteId": id})
 }
 
- func (h *Handler) handleUpdateFavorite(w http.ResponseWriter, r *http.Request, userID, favID string) {
+func (h *Handler) handleUpdateFavorite(w http.ResponseWriter, r *http.Request, userID, favID string) {
 	var body struct {
 		Description string `json:"description" validate:"required,max=500"`
 	}
-	
+
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid body")
 		return
 	}
 
- 	if err := validateStruct(body); err != nil {
+	if err := validateStruct(body); err != nil {
 		validationErrorResponse(w, err)
 		return
 	}
@@ -129,7 +129,7 @@ func writeJSON(w http.ResponseWriter, code int, v interface{}) {
 
 func (h *Handler) handleListFavorites(w http.ResponseWriter, r *http.Request, userID string) {
 	limit, offset := getPaginationParams(r)
-	
+
 	favs, err := h.svc.ListFavorites(userID, limit, offset)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -141,10 +141,10 @@ func (h *Handler) handleListFavorites(w http.ResponseWriter, r *http.Request, us
 func getPaginationParams(r *http.Request) (int, int) {
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
-	
+
 	limit := 50
 	offset := 0
-	
+
 	if limitStr != "" {
 		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
 			limit = l
@@ -153,12 +153,12 @@ func getPaginationParams(r *http.Request) (int, int) {
 			}
 		}
 	}
-	
+
 	if offsetStr != "" {
 		if o, err := strconv.Atoi(offsetStr); err == nil && o >= 0 {
 			offset = o
 		}
 	}
-	
+
 	return limit, offset
 }
